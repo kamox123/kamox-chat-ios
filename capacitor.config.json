@@ -1,0 +1,7 @@
+{
+  "appId": "com.kamox.chat",
+  "appName": "KAMOX Chat",
+  "webDir": "www",
+  "server": { "url": "https://kamox123.github.io/portfolio-demo/chat/", "errorPath": "offline.html" },
+  "ios": { "backgroundColor": "#0b0b1e", "contentInset": "never" }
+}

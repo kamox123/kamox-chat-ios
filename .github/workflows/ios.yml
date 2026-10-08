@@ -1,0 +1,55 @@
+# Сборка KAMOX Chat для iPhone на бесплатном облачном Mac от GitHub.
+# Результат — KAMOX-Chat.ipa без подписи в разделе Releases (метка latest). Подписать и поставить — Sideloadly с обычным Apple ID.
+name: Сборка для iPhone
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capacitor
+        run: |
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8
+          npx cap add ios
+      - name: Разрешения и значок
+        run: |
+          P=ios/App/App/Info.plist
+          B=/usr/libexec/PlistBuddy
+          $B -c "Add :NSCameraUsageDescription string 'Камера нужна для видеозвонков, кружков и фото'" $P
+          $B -c "Add :NSMicrophoneUsageDescription string 'Микрофон нужен для звонков, голосовых и кружков'" $P
+          $B -c "Add :NSPhotoLibraryUsageDescription string 'Чтобы отправлять фото из галереи'" $P
+          $B -c "Add :NSPhotoLibraryAddUsageDescription string 'Чтобы сохранять фото из чата'" $P
+          $B -c "Add :NSLocalNetworkUsageDescription string 'Для школьного чата без интернета через Wi-Fi'" $P
+          $B -c "Add :NSAppTransportSecurity dict" -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" $P
+          $B -c "Set :CFBundleDisplayName 'KAMOX Chat'" $P || $B -c "Add :CFBundleDisplayName string 'KAMOX Chat'" $P
+          # значок: наш icon.png во всех размерах, которые просит шаблон
+          for f in ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png; do
+            w=$(sips -g pixelWidth "$f" | awk '/pixelWidth/ {print $2}')
+            sips -s format png -z $w $w assets/icon.png --out "$f" >/dev/null
+          done
+          npx cap sync ios
+      - name: Сборка
+        run: |
+          cd ios/App
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -30
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/KAMOX-Chat.ipa" Payload
+          ls -la "$GITHUB_WORKSPACE/KAMOX-Chat.ipa"
+      - name: Выложить
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest -y --cleanup-tag || true
+          gh release create latest KAMOX-Chat.ipa --title "KAMOX Chat для iPhone" \
+            --notes "Скачайте KAMOX-Chat.ipa и установите через Sideloadly (инструкция в README)."
