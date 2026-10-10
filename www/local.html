@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>Школьный чат · KAMOX</title>
+<title>Школьный чат · Klik</title>
 <meta name="theme-color" content="#0b0b1e">
 <style>
 :root { --base: #0b0b1e; --text: #f6f5ff; --muted: rgba(235, 232, 255, .62); --dim: rgba(235, 232, 255, .38);
@@ -223,7 +223,7 @@ textarea { width: 100%; border: 0; outline: 0; background: none; resize: none; m
 
 <script>
 'use strict';
-// Школьный чат без интернета. Страницу раздаёт телефон-сервер (приложение KAMOX Chat), всё идёт по WebSocket внутри Wi-Fi.
+// Школьный чат без интернета. Страницу раздаёт телефон-сервер (приложение Klik), всё идёт по WebSocket внутри Wi-Fi.
 // Вкладки: чат, домашка, общий рисунок, игры; рация — на всех вкладках.
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -362,7 +362,7 @@ $('photoInput').onchange = () => {
 $('viewer').onclick = () => $('viewer').classList.add('hidden');
 
 // ---------- рация: зажал — говоришь, у всех звучит сразу ----------
-// Звук: 16 кГц, куски по 64 мс. Говорить можно там, где браузер даёт микрофон (приложение KAMOX); слушать — везде.
+// Звук: 16 кГц, куски по 64 мс. Говорить можно там, где браузер даёт микрофон (приложение Klik); слушать — везде.
 let actx = null, talk = null;
 const talkers = new Map(); // кто говорит: c → {next, until, name}
 function audio() {
@@ -376,7 +376,7 @@ function unb64(s) { const r = atob(s), u = new Uint8Array(r.length); for (let i 
 async function pttDown(e) {
   e.preventDefault();
   try { ptt.setPointerCapture(e.pointerId); } catch {} // палец можно чуть сдвинуть — эфир не прервётся
-  if (!canTalk()) { toast('Здесь рация только слушает. Говорить можно из приложения KAMOX Chat на Android', 3500); return; }
+  if (!canTalk()) { toast('Здесь рация только слушает. Говорить можно из приложения Klik на Android', 3500); return; }
   if (talk) return;
   const a = audio(); if (!a) return;
   talk = { starting: true };
