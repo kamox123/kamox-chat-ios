@@ -446,12 +446,8 @@ public class LocalChatPlugin: CAPPlugin, CAPBridgedPlugin, WKScriptMessageHandle
     public let jsName = "LocalChat"
     public let pluginMethods: [CAPPluginMethod] = []
 
-    override public func load() {
-        DispatchQueue.main.async {
-            guard let wv = self.bridge?.webView else { return }
-            wv.configuration.userContentController.add(KamoxWeakHandler(self), name: "kamoxLocal")
-        }
-    }
+    /// страница, которая последней обращалась к модулю, — ей и отвечаем
+    weak var lastWebView: WKWebView?
 
     static func assets(_ name: String) -> Data? {
         let base = (name as NSString).deletingPathExtension, ext = (name as NSString).pathExtension
@@ -467,6 +463,7 @@ public class LocalChatPlugin: CAPPlugin, CAPBridgedPlugin, WKScriptMessageHandle
 
     public func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any], let cmd = body["cmd"] as? String, let id = body["id"] as? String else { return }
+        if let w = message.webView { lastWebView = w }
         let arg = body["arg"] as? String ?? ""
         // управлять сервером можно только со своих страниц, не со страниц чужих телефонов
         let o = message.frameInfo.securityOrigin
@@ -502,7 +499,7 @@ public class LocalChatPlugin: CAPPlugin, CAPBridgedPlugin, WKScriptMessageHandle
 
     private func reply(_ id: String, _ json: String) {
         DispatchQueue.main.async {
-            self.bridge?.webView?.evaluateJavaScript("window.__kcReply && window.__kcReply(\(KamoxJS.quote(id)), \(json))", completionHandler: nil)
+            (self.lastWebView ?? self.bridge?.webView)?.evaluateJavaScript("window.__kcReply && window.__kcReply(\(KamoxJS.quote(id)), \(json))", completionHandler: nil)
         }
     }
 
@@ -531,7 +528,15 @@ enum KamoxJS {
 
 /// Главный экран приложения: обычный экран Capacitor + наш модуль школьного чата.
 class KamoxViewController: CAPBridgeViewController {
+    let kamoxPlugin = LocalChatPlugin()
+    // мостик «kamoxLocal» вписываем в настройки WebView ДО загрузки страниц, иначе страница его не видит
+    override open func webViewConfiguration(for instanceConfiguration: InstanceConfiguration) -> WKWebViewConfiguration {
+        let c = super.webViewConfiguration(for: instanceConfiguration)
+        c.userContentController.add(KamoxWeakHandler(kamoxPlugin), name: "kamoxLocal")
+        c.userContentController.addUserScript(WKUserScript(source: "window.__kcNative = 'ios';", injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        return c
+    }
     override open func capacitorDidLoad() {
-        bridge?.registerPluginInstance(LocalChatPlugin())
+        bridge?.registerPluginInstance(kamoxPlugin)
     }
 }
