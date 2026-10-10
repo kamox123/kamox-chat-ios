@@ -1,6 +1,7 @@
 # KAMOX Chat для iPhone
 
-Приложение-оболочка мессенджера KAMOX Chat (https://kamox123.github.io/chat). Собирается само на облачном Mac GitHub
+Приложение KAMOX Chat для iPhone (https://kamox123.github.io/chat): мессенджер + школьный чат без интернета —
+iPhone может сам создать чат по Wi-Fi/точке доступа, найти чат рядом, рация, домашка, рисунок, игры (код — native/KamoxLocal.swift). Собирается само на облачном Mac GitHub
 при каждом изменении; готовый файл — в разделе **Releases → latest → KAMOX-Chat.ipa**.
 
 **Скачать:** [KAMOX-Chat.ipa](https://github.com/kamox123/kamox-chat-ios/releases/download/latest/KAMOX-Chat.ipa)

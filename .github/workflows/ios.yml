@@ -28,7 +28,7 @@ jobs:
           $B -c "Add :NSPhotoLibraryUsageDescription string 'Чтобы отправлять фото из галереи'" $P
           $B -c "Add :NSPhotoLibraryAddUsageDescription string 'Чтобы сохранять фото из чата'" $P
           $B -c "Add :NSLocalNetworkUsageDescription string 'Для школьного чата без интернета через Wi-Fi'" $P
-          $B -c "Add :NSAppTransportSecurity dict" -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" $P
+          $B -c "Add :NSAppTransportSecurity dict" -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoadsInWebContent bool true" $P
           $B -c "Set :CFBundleDisplayName 'KAMOX Chat'" $P || $B -c "Add :CFBundleDisplayName string 'KAMOX Chat'" $P
           # значок: наш icon.png во всех размерах, которые просит шаблон
           for f in ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png; do
@@ -36,12 +36,23 @@ jobs:
             sips -s format png -z $w $w assets/icon.png --out "$f" >/dev/null
           done
           npx cap sync ios
+      - name: Школьный чат без интернета (свой код на Swift)
+        run: |
+          # свой код дописываем в AppDelegate.swift — он уже входит в приложение, править проект Xcode не нужно
+          A=ios/App/App/AppDelegate.swift
+          { cat native/imports.swift; cat "$A"; cat native/KamoxLocal.swift; } > /tmp/AppDelegate.swift && mv /tmp/AppDelegate.swift "$A"
+          # главный экран — наш KamoxViewController (он подключает модуль школьного чата)
+          S=ios/App/App/Base.lproj/Main.storyboard
+          sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="KamoxViewController" customModule="App" customModuleProvider="target"/' "$S"
+          grep -c KamoxViewController "$S"
+          grep -c "class KamoxChatServer" "$A"
       - name: Сборка
         run: |
           cd ios/App
           xcodebuild -project App.xcodeproj -scheme App -configuration Release -sdk iphoneos \
             -destination 'generic/platform=iOS' -derivedDataPath build -skipPackagePluginValidation \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -30
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build > build.log 2>&1             || { echo "=== ОШИБКИ ==="; grep -E "error:" build.log | head -60; tail -40 build.log; exit 1; }
+          tail -5 build.log
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/App.app Payload/
           zip -qr "$GITHUB_WORKSPACE/KAMOX-Chat.ipa" Payload

@@ -51,7 +51,7 @@ h1 { margin: 0; font-size: 26px; } .head p { margin: 6px 0 0; color: var(--muted
   <div class="head">
     <div class="badge"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/><path d="M2 9.3a14.5 14.5 0 0 1 20 0"/></svg></div>
     <h1>Чат без интернета</h1>
-    <p id="sub">Общайтесь с друзьями рядом через Wi-Fi или точку доступа — интернет не нужен</p>
+    <p id="sub">Чат, рация, домашка, рисунки и игры с друзьями рядом — через Wi-Fi или точку доступа, без интернета</p>
   </div>
 
   <input id="name" class="field glass" maxlength="30" placeholder="Ваше имя в чате">
@@ -80,7 +80,7 @@ h1 { margin: 0; font-size: 26px; } .head p { margin: 6px 0 0; color: var(--muted
   </div>
 
   <button class="btn ghost" id="backBtn">Вернуться в обычный KAMOX Chat</button>
-  <p class="small">Сообщения школьного чата хранятся на телефоне-сервере, пока чат включён. Голосовые и звонки здесь не работают.</p>
+  <p class="small">Чат и домашка хранятся на телефоне-сервере. Внутри: чат, рация, доска ДЗ, общий рисунок и игры. Говорить в рацию можно из приложения, с iPhone — слушать.</p>
 </main>
 <script>
 //---------------------------------------------------------------------
@@ -2386,14 +2386,25 @@ var qrcode = function() {
 'use strict';
 const $ = (id) => document.getElementById(id);
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
-// мостик к Java-части приложения (LocalChatPlugin.java); в обычном браузере его нет
-const K = window.KamoxLocal;
-const LC = K && {
-  start: async () => { const r = JSON.parse(K.start()); if (r.error) throw new Error(r.error); return r; },
-  stop: async () => K.stop(),
-  status: async () => JSON.parse(K.status()),
-  find: () => new Promise((res, rej) => { window.kcFound = (u) => (u ? res({ url: u }) : rej(new Error('not found'))); K.find(); }),
-};
+// мостик к своей части приложения: на Android — window.KamoxLocal (LocalChatPlugin.java, отвечает сразу),
+// на iPhone — window.webkit.messageHandlers.kamoxLocal (KamoxLocal.swift, отвечает через window.__kcReply). В браузере мостика нет.
+const KA = window.KamoxLocal, KI = window.webkit?.messageHandlers?.kamoxLocal;
+const waits = {}; window.__kcReply = (id, r) => { waits[id]?.(r); delete waits[id]; };
+const ios = (cmd, arg = '') => new Promise((res) => { const id = Math.random().toString(36).slice(2); waits[id] = res; KI.postMessage({ cmd, arg, id }); });
+const ok = (r) => { if (r.error) throw new Error(r.error); return r; };
+const LC = KA ? {
+  start: async () => ok(JSON.parse(KA.start())),
+  stop: async () => KA.stop(),
+  status: async () => JSON.parse(KA.status()),
+  find: () => new Promise((res, rej) => { window.kcFound = (u) => (u ? res({ url: u }) : rej(new Error('not found'))); KA.find(); }),
+  proxy: async (h) => JSON.parse(KA.proxy(h)),
+} : KI ? {
+  start: async () => ok(await ios('start')),
+  stop: () => ios('stop'),
+  status: () => ios('status'),
+  find: async () => { const r = await ios('find'); if (!r.url) throw new Error('not found'); return r; },
+  proxy: (h) => ios('proxy', h),
+} : null;
 const hashName = decodeURIComponent((location.hash.match(/name=([^&]+)/) || [])[1] || '');
 $('name').value = hashName || store.get('kl-name') || '';
 const MAIN = 'https://kamox123.github.io/portfolio-demo/chat/';
@@ -2405,7 +2416,16 @@ function name() {
   if (!n) { $('name').focus(); $('name').placeholder = 'Сначала впишите имя'; return null; }
   store.set('kl-name', n); return n;
 }
-function go(url) { const n = name(); if (!n) return; location.href = url + '#app=1&name=' + encodeURIComponent(n); }
+// В приложении чат открываем по адресу 127.0.0.1 — там телефон разрешает микрофон для рации:
+// создатель чата — прямо со своего сервера, гость — через переходник, который пересылает всё на телефон-сервер.
+async function go(url) {
+  const n = name(); if (!n) return;
+  const host = url.replace(/^https?:\/\//, '').replace(/\/.*$/, ''), hash = '#app=1&name=' + encodeURIComponent(n);
+  if (!LC) { location.href = url + hash; return; }
+  if (/^(127\.0\.0\.1|localhost):/.test(host)) { location.href = `http://127.0.0.1:${host.split(':')[1]}/` + hash; return; }
+  let r = {}; try { r = await LC.proxy(host); } catch {}
+  location.href = r.port ? `http://127.0.0.1:${r.port}/` + hash : url + hash;
+}
 
 let poll = null;
 function showHost(info) {

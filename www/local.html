@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Школьный чат · KAMOX</title>
+<meta name="theme-color" content="#0b0b1e">
+<style>
+:root { --base: #0b0b1e; --text: #f6f5ff; --muted: rgba(235, 232, 255, .62); --dim: rgba(235, 232, 255, .38);
+  --glass: rgba(255, 255, 255, .085); --glass2: rgba(255, 255, 255, .14); --edge: rgba(255, 255, 255, .16);
+  --grad: linear-gradient(135deg, #7b61ff 0%, #b36bff 55%, #ff5aa8 100%); --green: #34d399; --red: #ff5b6e; --violet: #7b61ff; --pink: #ff5aa8;
+  --safeT: env(safe-area-inset-top); --safeB: env(safe-area-inset-bottom); --blur: blur(24px) saturate(170%); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--base); color: var(--text); overflow: hidden;
+  font: 16px/1.38 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; }
+textarea, input, .m { -webkit-user-select: text; user-select: text; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+input, textarea, select { font: inherit; color: var(--text); }
+::placeholder { color: var(--dim); }
+.hidden { display: none !important; }
+.bg { position: fixed; inset: 0; z-index: 0; background: radial-gradient(60% 50% at 15% 10%, rgba(123, 97, 255, .55), transparent 70%),
+  radial-gradient(55% 45% at 90% 30%, rgba(255, 90, 168, .4), transparent 70%), radial-gradient(60% 50% at 30% 95%, rgba(47, 211, 245, .3), transparent 70%); }
+.glass { background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--edge); }
+.ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.screen { position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column; max-width: 760px; margin: 0 auto; }
+/* вход */
+.join { margin: auto; width: min(400px, calc(100% - 28px)); padding: 28px 22px 22px; border-radius: 30px; text-align: center; }
+.badge { width: 84px; height: 84px; margin: 0 auto 12px; border-radius: 26px; display: grid; place-items: center; background: var(--grad); box-shadow: 0 16px 40px rgba(123, 97, 255, .55); }
+.badge .ic { width: 42px; height: 42px; color: #fff; }
+.join h1 { margin: 0; font-size: 26px; } .join p { margin: 6px 0 18px; color: var(--muted); font-size: 15px; }
+.field { display: block; width: 100%; padding: 13px 15px; border-radius: 15px; border: 1px solid var(--edge); background: rgba(0, 0, 0, .22); outline: none; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px; margin-top: 12px; border-radius: 16px;
+  background: var(--grad); color: #fff; font-weight: 700; box-shadow: 0 10px 28px rgba(123, 97, 255, .45); }
+.btn:active, .chip:active, .rb:active { transform: scale(.96); }
+.btn.ghost { background: var(--glass2); box-shadow: none; }
+.note { font-size: 13px; color: var(--dim); margin-top: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 18px; background: var(--glass2); font-size: 14px; font-weight: 650; }
+.chip.on { background: var(--grad); color: #fff; }
+/* шапка и вкладки */
+.top { display: flex; align-items: center; gap: 10px; margin: calc(8px + var(--safeT)) 10px 4px; padding: 7px 12px; border-radius: 24px; }
+.top .icb { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; }
+.top .t { font-weight: 750; font-size: 18px; } .top .s { font-size: 13px; color: var(--green); }
+.top .mid { flex: 1; min-width: 0; }
+.tabs { display: flex; gap: 4px; margin: 4px 10px 2px; padding: 4px; border-radius: 18px; }
+.tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border-radius: 14px; font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.tabs button .ic { width: 20px; height: 20px; }
+.tabs button.on { background: var(--glass2); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2); }
+.tabs button .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pink); margin-top: -4px; }
+.people { display: flex; gap: 6px; overflow-x: auto; padding: 6px 12px 4px; scrollbar-width: none; }
+.people span { flex: none; font-size: 13px; padding: 4px 10px; border-radius: 14px; background: var(--glass2); }
+.people span.me { background: rgba(123, 97, 255, .35); }
+.pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* чат */
+.msgs { flex: 1; overflow-y: auto; padding: 8px 12px 6px; display: flex; flex-direction: column; gap: 6px; }
+.m { max-width: 80%; padding: 8px 12px 6px; border-radius: 20px 20px 20px 6px; align-self: flex-start; background: var(--glass2); border: 1px solid var(--edge);
+  white-space: pre-wrap; word-wrap: break-word; animation: pop .25s ease; }
+.m.me { align-self: flex-end; border-radius: 20px 20px 6px 20px; background: var(--grad); border-color: transparent; }
+.m.pending { opacity: .6; }
+.m .who { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.m .time { font-size: 11px; color: rgba(255, 255, 255, .6); float: right; margin: 8px 0 -3px 10px; }
+.m.photo { padding: 4px; } .m.photo img { display: block; max-width: 100%; width: 260px; border-radius: 16px; }
+.m.photo .who { padding: 4px 8px 2px; } .m.photo .time { float: none; display: block; text-align: right; margin: 2px 8px 0; }
+.sys { align-self: center; font-size: 13px; color: var(--dim); padding: 2px 10px; text-align: center; }
+.sys button { color: #c4b5ff; font-weight: 700; text-decoration: underline; }
+.typing { font-size: 13px; color: var(--muted); padding: 0 16px; min-height: 18px; }
+.composer { display: flex; align-items: flex-end; gap: 8px; padding: 6px 10px calc(8px + var(--safeB)); }
+.rb { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.rb.send { background: var(--grad); color: #fff; box-shadow: 0 8px 22px rgba(123, 97, 255, .45); }
+.inputWrap { flex: 1; border-radius: 23px; padding: 11px 16px; }
+textarea { width: 100%; border: 0; outline: 0; background: none; resize: none; max-height: 130px; display: block; }
+.empty { margin: auto; text-align: center; color: var(--muted); padding: 0 30px; }
+/* рация */
+.ptt { position: fixed; right: 14px; bottom: calc(76px + var(--safeB)); z-index: 6; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(135deg, #ff8a3d, #ff5aa8); color: #fff; box-shadow: 0 12px 30px rgba(255, 90, 168, .5); touch-action: none; transition: transform .15s; }
+.ptt .ic { width: 30px; height: 30px; }
+.ptt.live { transform: scale(1.18); background: linear-gradient(135deg, #ff3d5a, #ff8a3d); box-shadow: 0 0 0 10px rgba(255, 61, 90, .25), 0 0 0 22px rgba(255, 61, 90, .12); }
+.ptt.listen { opacity: .55; }
+.pttLabel { position: fixed; right: 10px; bottom: calc(146px + var(--safeB)); z-index: 6; font-size: 11px; font-weight: 700; color: var(--muted); width: 74px; text-align: center; pointer-events: none; }
+.onair { position: fixed; left: 50%; top: calc(64px + var(--safeT)); transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; border-radius: 20px; font-weight: 700; background: rgba(255, 61, 90, .85); box-shadow: 0 10px 30px rgba(255, 61, 90, .4); white-space: nowrap; }
+.onair .bars { display: flex; gap: 3px; align-items: center; height: 18px; }
+.onair .bars i { width: 3px; border-radius: 2px; background: #fff; animation: bar .7s ease-in-out infinite; }
+.onair .bars i:nth-child(2) { animation-delay: .15s; } .onair .bars i:nth-child(3) { animation-delay: .3s; } .onair .bars i:nth-child(4) { animation-delay: .45s; }
+@keyframes bar { 0%, 100% { height: 5px; } 50% { height: 18px; } }
+/* ДЗ */
+.scroll { flex: 1; overflow-y: auto; padding: 8px 12px calc(96px + var(--safeB)); display: flex; flex-direction: column; gap: 10px; }
+.card { border-radius: 22px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.row { display: flex; gap: 8px; } .row > * { flex: 1; min-width: 0; }
+.subjects { display: flex; gap: 6px; flex-wrap: wrap; }
+.subjects .chip { padding: 6px 11px; font-size: 13px; }
+.dayTitle { font-size: 13px; font-weight: 750; letter-spacing: .5px; text-transform: uppercase; color: var(--dim); margin: 6px 6px -2px; }
+.dayTitle.late { color: #ff8a9a; }
+.hw { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 18px; }
+.hw .subj { display: inline-block; font-size: 12px; font-weight: 750; padding: 2px 9px; border-radius: 9px; margin-bottom: 4px; }
+.hw .txt { white-space: pre-wrap; word-wrap: break-word; }
+.hw .by { font-size: 12px; color: var(--dim); margin-top: 4px; }
+.hw .mid { flex: 1; min-width: 0; }
+.hw.done .txt { text-decoration: line-through; opacity: .5; }
+.check { width: 26px; height: 26px; border-radius: 9px; border: 2px solid var(--edge); display: grid; place-items: center; flex: none; margin-top: 2px; }
+.hw.done .check { background: var(--green); border-color: var(--green); }
+.hw .del { opacity: .5; padding: 4px; }
+/* рисунок */
+.drawWrap { flex: 1; min-height: 0; padding: 6px 12px; display: flex; flex-direction: column; gap: 8px; }
+.canvasBox { flex: 1; min-height: 0; border-radius: 20px; overflow: hidden; background: #fff; position: relative; touch-action: none; }
+.canvasBox canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+.tools { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-radius: 20px; overflow-x: auto; scrollbar-width: none; margin-bottom: calc(80px + var(--safeB)); margin-right: 76px; }
+.sw { width: 30px; height: 30px; border-radius: 50%; flex: none; border: 3px solid transparent; box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); }
+.sw.on { border-color: #fff; transform: scale(1.12); }
+.sz { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.sz.on { background: var(--glass2); }
+.sz i { display: block; border-radius: 50%; background: #fff; }
+.tools .sep { width: 1px; height: 24px; background: var(--edge); flex: none; }
+/* игры */
+.gameList .g { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; }
+.gameList .g .mid { flex: 1; min-width: 0; } .gameList .g .s { font-size: 13px; color: var(--muted); }
+.gIc { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--grad); flex: none; }
+.gIc .ic { color: #fff; }
+.pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.board { position: fixed; inset: 0; z-index: 8; background: rgba(8, 6, 20, .82); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  display: flex; flex-direction: column; align-items: center; padding: calc(16px + var(--safeT)) 14px calc(20px + var(--safeB)); gap: 12px; overflow-y: auto; }
+.board h2 { margin: 0; font-size: 20px; } .board .st { color: var(--muted); font-size: 15px; text-align: center; min-height: 22px; }
+.ttt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(84vw, 330px); aspect-ratio: 1; }
+.ttt button { border-radius: 18px; background: var(--glass2); border: 1px solid var(--edge); display: grid; place-items: center; }
+.ttt button .ic { width: 58%; height: 58%; stroke-width: 2.6; }
+.ttt button.x { color: #c4b5ff; } .ttt button.o { color: #ff8ac0; } .ttt button.win { background: rgba(52, 211, 153, .35); }
+.sea { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; width: min(86vw, 330px); aspect-ratio: 1; }
+.sea button { border-radius: 6px; background: rgba(47, 211, 245, .14); border: 1px solid rgba(47, 211, 245, .2); position: relative; }
+.sea button.ship { background: rgba(196, 181, 255, .55); }
+.sea button.miss::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22%; height: 22%; border-radius: 50%; background: rgba(255, 255, 255, .55); transform: translate(-50%, -50%); }
+.sea button.hit { background: rgba(255, 138, 61, .75); } .sea button.sunk { background: rgba(255, 61, 90, .85); }
+.sea.mine { width: min(56vw, 210px); gap: 2px; }
+.boardLbl { font-size: 13px; color: var(--dim); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.net { position: fixed; left: 50%; top: calc(64px + var(--safeT)); transform: translateX(-50%); z-index: 5; padding: 8px 14px; border-radius: 16px; font-size: 14px; white-space: nowrap; }
+.viewer { position: fixed; inset: 0; z-index: 9; background: rgba(0, 0, 0, .92); display: grid; place-items: center; }
+.viewer img { max-width: 100%; max-height: 100%; }
+.toast { position: fixed; left: 50%; bottom: calc(150px + var(--safeB)); transform: translateX(-50%); z-index: 10; padding: 10px 16px; border-radius: 16px; font-size: 14px; max-width: 90vw; text-align: center; }
+@keyframes pop { from { transform: scale(.92); opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<section id="sJoin" class="screen">
+  <div class="join glass">
+    <div class="badge"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/><path d="M2 9.3a14.5 14.5 0 0 1 20 0"/></svg></div>
+    <h1>Школьный чат</h1>
+    <p>Без интернета — через Wi-Fi или точку доступа. Чат, рация, домашка, рисунки и игры.</p>
+    <input id="name" class="field" maxlength="30" placeholder="Как вас зовут?" autocomplete="nickname">
+    <button class="btn" id="joinBtn">Войти</button>
+    <p class="note">Всё видят только те, кто подключён к этой же сети</p>
+  </div>
+</section>
+
+<section id="sMain" class="screen hidden">
+  <header class="top glass">
+    <button class="icb" id="exitBtn" aria-label="Выйти"><svg class="ic" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="mid"><div class="t">Школьный чат</div><div class="s" id="online">подключаюсь…</div></div>
+  </header>
+  <nav class="tabs glass" id="tabs">
+    <button data-tab="chat" class="on"><svg class="ic" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z"/></svg>Чат<span class="dot hidden"></span></button>
+    <button data-tab="hw"><svg class="ic" viewBox="0 0 24 24"><path d="M5 4.5h11a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8.5h6"/></svg>ДЗ<span class="dot hidden"></span></button>
+    <button data-tab="draw"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11a2.8 2.8 0 0 0-4-4L4 15z"/><path d="M13.5 6.5l4 4"/></svg>Рисуем<span class="dot hidden"></span></button>
+    <button data-tab="games"><svg class="ic" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7 10.5v4M5 12.5h4"/><circle cx="15.5" cy="11.5" r="1" fill="currentColor"/><circle cx="17.5" cy="14" r="1" fill="currentColor"/></svg>Игры<span class="dot hidden"></span></button>
+  </nav>
+  <div class="people" id="people"></div>
+
+  <!-- чат -->
+  <div class="pane" id="pane-chat">
+    <div class="msgs" id="msgs"><div class="empty" id="empty">Сообщений пока нет. Напишите первым!</div></div>
+    <div class="typing" id="typing"></div>
+    <div class="composer" style="padding-right:86px">
+      <button class="rb glass" id="photoBtn" aria-label="Фото"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="2"/><path d="M21 15.5l-5-5L5 21"/></svg></button>
+      <input type="file" id="photoInput" accept="image/*" hidden>
+      <div class="inputWrap glass"><textarea id="text" rows="1" placeholder="Сообщение"></textarea></div>
+      <button class="rb send" id="sendBtn" aria-label="Отправить"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12L20 4l-4 16-4-7z" fill="currentColor"/></svg></button>
+    </div>
+  </div>
+
+  <!-- домашка -->
+  <div class="pane hidden" id="pane-hw">
+    <div class="scroll" id="hwScroll">
+      <div class="card glass">
+        <h3>Добавить домашку</h3>
+        <div class="subjects" id="subjects"></div>
+        <input class="field" id="hwSubj" maxlength="30" placeholder="Предмет">
+        <textarea class="field" id="hwText" rows="2" maxlength="500" placeholder="Что задали: № 245, 246; выучить правило"></textarea>
+        <div class="row"><input class="field" type="date" id="hwDue"><button class="btn" id="hwAdd" style="margin-top:0">Добавить</button></div>
+      </div>
+      <div id="hwList"></div>
+    </div>
+  </div>
+
+  <!-- рисунок -->
+  <div class="pane hidden" id="pane-draw">
+    <div class="drawWrap">
+      <div class="canvasBox" id="canvasBox"><canvas id="cv"></canvas></div>
+      <div class="tools glass" id="tools"></div>
+    </div>
+  </div>
+
+  <!-- игры -->
+  <div class="pane hidden" id="pane-games">
+    <div class="scroll">
+      <div class="card glass">
+        <h3>Новая игра</h3>
+        <div class="pick" id="gameKinds"></div>
+        <div class="boardLbl" style="margin-top:4px">С кем играть</div>
+        <div class="pick" id="gameWho"><span class="note" style="margin:0">Пока никого нет в сети</span></div>
+      </div>
+      <div class="gameList" id="gameList"></div>
+    </div>
+  </div>
+</section>
+
+<button class="ptt hidden" id="ptt" aria-label="Рация: зажмите и говорите"><svg class="ic" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="14" rx="2.5"/><path d="M9.5 7V3M10 11h4M10 14h4"/><circle cx="12" cy="17.5" r="1" fill="currentColor"/></svg></button>
+<div class="pttLabel hidden" id="pttLabel">РАЦИЯ</div>
+<div class="onair hidden" id="onair"><span class="bars"><i></i><i></i><i></i><i></i></span><span id="onairText"></span></div>
+<div class="board hidden" id="board"></div>
+<div class="net glass hidden" id="net">Нет связи с телефоном-сервером. Переподключаюсь…</div>
+<div class="viewer hidden" id="viewer"><img id="viewerImg" alt=""></div>
+<div class="toast glass hidden" id="toast"></div>
+
+<script>
+'use strict';
+// Школьный чат без интернета. Страницу раздаёт телефон-сервер (приложение KAMOX Chat), всё идёт по WebSocket внутри Wi-Fi.
+// Вкладки: чат, домашка, общий рисунок, игры; рация — на всех вкладках.
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const rid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const UID = store.get('kl-uid') || (store.set('kl-uid', rid()), store.get('kl-uid')) || rid();
+const hashArg = (k) => decodeURIComponent((location.hash.match(new RegExp('[#&]' + k + '=([^&]+)')) || [])[1] || '');
+const SERVER = hashArg('server') || location.host;          // в приложении страница своя, а сервер — телефон в сети
+const inApp = /[#&]app=1/.test(location.hash);
+let NAME = hashArg('name') || store.get('kl-name') || '';
+$('name').value = NAME;
+if (!inApp) $('exitBtn').classList.add('hidden');
+const hhmm = (t) => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+let toastT; function toast(t, ms = 2600) { const e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => e.classList.add('hidden'), ms); }
+function color(u) { let h = 0; for (const c of String(u)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return `hsl(${h % 360},85%,78%)`; }
+const IC = {
+  x: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>',
+  o: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/></svg>',
+  trash: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  check: '<svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px;stroke-width:3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  grid: '<svg class="ic" viewBox="0 0 24 24"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
+  ship: '<svg class="ic" viewBox="0 0 24 24"><path d="M3 15h18l-2.5 5h-13zM6 15V9h12v6M10 9V5h4v4"/></svg>',
+  close: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+// ---------- подключение ----------
+const seen = new Set(), pending = new Map(), people = new Map();
+let ws = null, myConn = null, retry = 0, fails = 0, typingT = null, lastTyping = 0, tab = 'chat';
+$('joinBtn').onclick = join;
+$('name').onkeydown = (e) => { if (e.key === 'Enter') join(); };
+function join() {
+  NAME = $('name').value.trim().slice(0, 30);
+  if (!NAME) return $('name').focus();
+  store.set('kl-name', NAME);
+  audio(); // звук рации можно включить только по нажатию — включаем сейчас
+  $('sJoin').classList.add('hidden'); $('sMain').classList.remove('hidden');
+  $('ptt').classList.remove('hidden'); $('pttLabel').classList.remove('hidden');
+  if (!canTalk()) { $('ptt').classList.add('listen'); $('pttLabel').textContent = 'СЛУШАТЬ'; }
+  connect(); initDraw(); initHw(); initGames();
+}
+// назад к экрану «Чат без интернета»: у приложения на iPhone свой адрес страниц (capacitor://), на Android — https://localhost
+$('exitBtn').onclick = () => { location.href = (window.webkit?.messageHandlers?.kamoxLocal ? 'capacitor://localhost' : 'https://localhost') + '/offline.html'; };
+
+function connect() {
+  ws = new WebSocket(`ws://${SERVER}/ws`);
+  let opened = false;
+  ws.onopen = () => { opened = true; retry = 0; fails = 0; $('net').classList.add('hidden'); send({ t: 'hello', u: UID, n: NAME }); for (const p of pending.values()) ws.send(JSON.stringify(p)); };
+  ws.onmessage = (e) => { let d; try { d = JSON.parse(e.data); } catch { return; } onData(d); };
+  ws.onclose = () => {
+    people.clear(); paintPeople();
+    $('net').classList.remove('hidden');
+    // страница приложения не смогла открыть соединение — открываем чат прямо с телефона-сервера (без рации)
+    if (!opened && ++fails >= 3 && location.protocol === 'https:') { location.href = `http://${SERVER}/#app=1&name=${encodeURIComponent(NAME)}`; return; }
+    setTimeout(connect, Math.min(4000, 400 * ++retry));
+  };
+}
+function send(obj) { if (ws?.readyState === 1) { ws.send(JSON.stringify(obj)); return true; } return false; }
+
+function onData(d) {
+  if (d.t === 'you') { myConn = d.c; return; }
+  if (d.t === 'join') { const was = people.has(d.c); people.set(d.c, d.m); paintPeople(); if (!was && d.c !== myConn && d.m.u !== UID) sys(`${d.m.n} в чате`); return; }
+  if (d.t === 'leave') { const p = people.get(d.c); people.delete(d.c); paintPeople(); if (p && p.u !== UID) sys(`${p.n} вышел(а)`); return; }
+  if (d.t === 'typing') { const p = people.get(d.c); if (!p) return; $('typing').textContent = `${p.n} печатает…`; clearTimeout(typingT); typingT = setTimeout(() => ($('typing').textContent = ''), 2500); return; }
+  const m = d.m; if (!m) return;
+  if (!d.seq) { live(m, d.c); return; }             // мгновенное: рация, рисуемая линия
+  if (seen.has(d.seq)) return; seen.add(d.seq);
+  if (m.t === 'msg' || m.t === 'img') onChat(m, d.ts);
+  else if (m.t.startsWith('hw')) onHw(m, d.ts);
+  else if (m.t === 'draw' || m.t === 'drawclear') onDraw(m);
+  else if (m.t === 'game') onGame(m, d.ts);
+}
+function paintPeople() {
+  const names = new Map(); for (const p of people.values()) names.set(p.u, p.n);
+  $('online').textContent = names.size ? `в сети: ${names.size}` : 'подключаюсь…';
+  $('people').innerHTML = [...names].map(([u, n]) => `<span class="${u === UID ? 'me' : ''}">${esc(n)}${u === UID ? ' (вы)' : ''}</span>`).join('');
+  paintWho();
+}
+function markTab(t) { if (tab !== t) document.querySelector(`#tabs [data-tab="${t}"] .dot`).classList.remove('hidden'); }
+document.querySelectorAll('#tabs button').forEach((b) => (b.onclick = () => openTab(b.dataset.tab)));
+function openTab(t) {
+  tab = t;
+  document.querySelectorAll('#tabs button').forEach((b) => { b.classList.toggle('on', b.dataset.tab === t); if (b.dataset.tab === t) b.querySelector('.dot').classList.add('hidden'); });
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('hidden', p.id !== 'pane-' + t));
+  if (t === 'draw') fitCanvas();
+}
+
+// ---------- чат ----------
+function onChat(m, ts) {
+  if (m.u === UID && pending.has(m.k)) { pending.delete(m.k); const el = document.querySelector(`[data-k="${m.k}"]`); if (el) { el.classList.remove('pending'); el.querySelector('.time').textContent = hhmm(ts); return; } }
+  $('typing').textContent = '';
+  addMsg(m, ts, false);
+  if (m.u !== UID) markTab('chat');
+}
+function addMsg(m, ts, isPending) {
+  $('empty')?.remove();
+  const box = $('msgs'), near = box.scrollHeight - box.scrollTop - box.clientHeight < 140;
+  const mine = m.u === UID, el = document.createElement('div');
+  el.className = `m ${mine ? 'me' : ''} ${m.img ? 'photo' : ''} ${isPending ? 'pending' : ''}`;
+  el.dataset.k = m.k || '';
+  const who = mine ? '' : `<div class="who" style="color:${color(m.u)}">${esc(m.n)}</div>`;
+  const time = `<span class="time">${isPending ? '…' : hhmm(ts)}</span>`;
+  if (m.img && /^data:image\/(jpeg|png|webp);base64,/.test(m.img)) { el.innerHTML = `${who}<img alt="">${time}`; el.querySelector('img').src = m.img; }
+  else el.innerHTML = `${who}${esc(m.text)}${time}`;
+  const img = el.querySelector('img'); if (img) { img.onclick = () => { $('viewerImg').src = img.src; $('viewer').classList.remove('hidden'); }; img.onload = () => { if (near || mine) box.scrollTop = box.scrollHeight; }; }
+  box.appendChild(el);
+  if (near || mine) box.scrollTop = box.scrollHeight;
+  if (!mine && !isPending && document.hidden) navigator.vibrate?.(40);
+}
+function sys(html, raw = false) { $('empty')?.remove(); const el = document.createElement('div'); el.className = 'sys'; if (raw) el.innerHTML = html; else el.textContent = html; $('msgs').appendChild(el); const b = $('msgs'); b.scrollTop = b.scrollHeight; return el; }
+const ta = $('text');
+ta.oninput = () => {
+  ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 130) + 'px';
+  if (Date.now() - lastTyping > 1500) { lastTyping = Date.now(); send({ t: 'typing' }); }
+};
+ta.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); sendText(); } };
+$('sendBtn').onclick = () => { sendText(); ta.focus(); };
+function sendText() {
+  const text = ta.value.trim(); if (!text) return;
+  ta.value = ''; ta.style.height = 'auto';
+  post({ t: 'msg', k: rid(), u: UID, n: NAME, text: text.slice(0, 4000) });
+}
+function post(m) { pending.set(m.k, m); addMsg(m, Date.now(), true); send(m); }
+$('photoBtn').onclick = () => $('photoInput').click();
+$('photoInput').onchange = () => {
+  const f = $('photoInput').files[0]; $('photoInput').value = ''; if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {
+    const k = Math.min(1, 1280 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+    cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+    post({ t: 'img', k: rid(), u: UID, n: NAME, img: cv.toDataURL('image/jpeg', 0.8) });
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url;
+};
+$('viewer').onclick = () => $('viewer').classList.add('hidden');
+
+// ---------- рация: зажал — говоришь, у всех звучит сразу ----------
+// Звук: 16 кГц, куски по 64 мс. Говорить можно там, где браузер даёт микрофон (приложение KAMOX); слушать — везде.
+let actx = null, talk = null;
+const talkers = new Map(); // кто говорит: c → {next, until, name}
+function audio() {
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 }); } catch { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+  actx?.resume?.(); return actx;
+}
+function canTalk() { return !!(navigator.mediaDevices?.getUserMedia) && window.isSecureContext; }
+function beep(f, len = 0.08) { const a = audio(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0.12, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + len); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + len); }
+function b64(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(s) { const r = atob(s), u = new Uint8Array(r.length); for (let i = 0; i < r.length; i++) u[i] = r.charCodeAt(i); return u; }
+async function pttDown(e) {
+  e.preventDefault();
+  try { ptt.setPointerCapture(e.pointerId); } catch {} // палец можно чуть сдвинуть — эфир не прервётся
+  if (!canTalk()) { toast('Здесь рация только слушает. Говорить можно из приложения KAMOX Chat на Android', 3500); return; }
+  if (talk) return;
+  const a = audio(); if (!a) return;
+  talk = { starting: true };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    if (!talk) { stream.getTracks().forEach((t) => t.stop()); return; }
+    const src = a.createMediaStreamSource(stream), proc = a.createScriptProcessor(1024, 1, 1), mute = a.createGain(); mute.gain.value = 0;
+    const ratio = a.sampleRate / 16000; let seq = 0;
+    proc.onaudioprocess = (ev) => {
+      const inp = ev.inputBuffer.getChannelData(0), n = Math.floor(inp.length / ratio), pcm = new Int16Array(n);
+      for (let i = 0; i < n; i++) pcm[i] = Math.max(-1, Math.min(1, inp[Math.floor(i * ratio)])) * 32767;
+      send({ t: '~ptt', u: UID, n: NAME, s: seq++, a: b64(new Uint8Array(pcm.buffer)) });
+    };
+    src.connect(proc); proc.connect(mute); mute.connect(a.destination);
+    talk = { stream, src, proc };
+    $('ptt').classList.add('live'); beep(1200); navigator.vibrate?.(30);
+    $('onairText').textContent = 'Вы в эфире'; $('onair').classList.remove('hidden');
+  } catch { talk = null; toast('Нет доступа к микрофону'); }
+}
+function pttUp() {
+  if (!talk) return;
+  const t = talk; talk = null;
+  if (t.stream) { t.proc.disconnect(); t.src.disconnect(); t.stream.getTracks().forEach((x) => x.stop()); send({ t: '~pttend', u: UID }); beep(800); }
+  $('ptt').classList.remove('live'); paintOnAir();
+}
+const ptt = $('ptt');
+ptt.addEventListener('pointerdown', pttDown); ptt.addEventListener('pointerup', pttUp); ptt.addEventListener('pointercancel', pttUp);
+ptt.addEventListener('contextmenu', (e) => e.preventDefault());
+function hearChunk(m, c) {
+  const a = audio(); if (!a) return;
+  let t = talkers.get(c);
+  if (!t) { t = { next: 0, name: m.n }; talkers.set(c, t); beep(1200); paintOnAir(); }
+  const pcm = new Int16Array(unb64(m.a).buffer), buf = a.createBuffer(1, pcm.length, 16000), ch = buf.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+  const now = a.currentTime;
+  if (t.next < now + 0.03 || t.next > now + 0.6) t.next = now + 0.12; // небольшой запас против рывков; отставание сбрасываем
+  const s = a.createBufferSource(); s.buffer = buf; s.connect(a.destination); s.start(t.next);
+  t.next += buf.duration;
+  clearTimeout(t.timer); t.timer = setTimeout(() => endTalker(c), 1200);
+}
+function endTalker(c) { const t = talkers.get(c); if (!t) return; clearTimeout(t.timer); talkers.delete(c); beep(800); paintOnAir(); }
+function paintOnAir() {
+  if (talk) return;
+  const names = [...talkers.values()].map((t) => t.name);
+  $('onair').classList.toggle('hidden', !names.length);
+  $('onairText').textContent = names.length ? `${names.join(', ')} ${names.length > 1 ? 'говорят' : 'говорит'}` : '';
+}
+function live(m, c) {
+  if (m.t === '~ptt') hearChunk(m, c);
+  else if (m.t === '~pttend') setTimeout(() => endTalker(c), 300);
+  else if (m.t === '~stroke') liveStroke(m);
+}
+
+// ---------- доска домашки ----------
+const SUBJECTS = ['Алгебра', 'Геометрия', 'Русский', 'Литература', 'Английский', 'История', 'Физика', 'Химия', 'Биология', 'География', 'Информатика', 'Обществознание'];
+const hw = new Map(); // id → задание
+const doneSet = new Set(JSON.parse(store.get('kl-hw-done') || '[]'));
+function initHw() {
+  $('subjects').innerHTML = SUBJECTS.map((s) => `<button class="chip" data-s="${s}">${s}</button>`).join('');
+  $('subjects').querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => { $('hwSubj').value = b.dataset.s; paintSubj(); $('hwText').focus(); }));
+  $('hwSubj').oninput = paintSubj;
+  // «завтра» по местному времени (toISOString считает по Гринвичу и поздно вечером ошибается)
+  const d = new Date(); d.setDate(d.getDate() + 1); $('hwDue').value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  $('hwAdd').onclick = () => {
+    const subject = $('hwSubj').value.trim(), text = $('hwText').value.trim(), due = $('hwDue').value;
+    if (!subject) return toast('Выберите предмет'); if (!text) return toast('Впишите задание');
+    if (!send({ t: 'hw', id: rid(), subject: subject.slice(0, 30), text: text.slice(0, 500), due, u: UID, n: NAME })) return toast('Нет связи с телефоном-сервером');
+    $('hwText').value = ''; toast('Добавлено для всего класса');
+  };
+  paintHw();
+}
+function paintSubj() { const v = $('hwSubj').value; $('subjects').querySelectorAll('[data-s]').forEach((b) => b.classList.toggle('on', b.dataset.s === v)); }
+function onHw(m, ts) {
+  if (m.t === 'hw') { hw.set(m.id, { ...m, ts }); if (m.u !== UID) markTab('hw'); }
+  else if (m.t === 'hwdel') hw.delete(m.id);
+  paintHw();
+}
+function dueLabel(due) {
+  const d = new Date(due + 'T00:00'), t = new Date(); t.setHours(0, 0, 0, 0);
+  const diff = Math.round((d - t) / 864e5);
+  if (diff < 0) return ['Просрочено: ' + d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }), true];
+  if (diff === 0) return ['На сегодня', false]; if (diff === 1) return ['На завтра', false];
+  return ['На ' + d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }), false];
+}
+function paintHw() {
+  if (!$('hwList')) return;
+  const list = [...hw.values()].sort((a, b) => (a.due || '').localeCompare(b.due || '') || a.subject.localeCompare(b.subject));
+  let html = '', day = null;
+  for (const h of list) {
+    if (h.due !== day) { day = h.due; const [lbl, late] = dueLabel(h.due); html += `<div class="dayTitle ${late ? 'late' : ''}">${esc(lbl)}</div>`; }
+    const done = doneSet.has(h.id);
+    html += `<div class="hw glass ${done ? 'done' : ''}" data-id="${esc(h.id)}">
+      <button class="check" data-done aria-label="Сделано">${done ? IC.check : ''}</button>
+      <div class="mid"><span class="subj" style="background:${color(h.subject)}33;color:${color(h.subject)}">${esc(h.subject)}</span>
+        <div class="txt">${esc(h.text)}</div><div class="by">добавил(а) ${esc(h.n)}</div></div>
+      <button class="del" data-del aria-label="Удалить">${IC.trash}</button></div>`;
+  }
+  $('hwList').innerHTML = html || '<p class="empty" style="margin-top:20px">Домашки пока нет. Добавьте первую — её увидит весь класс.</p>';
+  $('hwList').querySelectorAll('[data-done]').forEach((b) => (b.onclick = () => {
+    const id = b.closest('.hw').dataset.id; doneSet.has(id) ? doneSet.delete(id) : doneSet.add(id);
+    store.set('kl-hw-done', JSON.stringify([...doneSet])); paintHw();
+  }));
+  $('hwList').querySelectorAll('[data-del]').forEach((b) => (b.onclick = () => {
+    const h = hw.get(b.closest('.hw').dataset.id);
+    if (h && confirm(`Удалить «${h.subject}: ${h.text.slice(0, 40)}» у всех?`)) send({ t: 'hwdel', id: h.id, u: UID, n: NAME });
+  }));
+}
+
+// ---------- рисуем вместе ----------
+// Холст 1000×1400 условных точек, у всех одинаковый. Линию видно у других, пока её рисуют; готовая сохраняется на сервере.
+const W = 1000, H = 1400, COLORS = ['#17153a', '#ff3d5a', '#ff8a3d', '#ffd23d', '#34d399', '#2fd3f5', '#7b61ff', '#ff5aa8', '#ffffff'];
+const strokes = [], liveSt = new Map(); let pen = { color: '#17153a', w: 6 }, cur = null, sendT = 0;
+const cv = $('cv'), g = cv.getContext('2d');
+function initDraw() {
+  $('tools').innerHTML = COLORS.map((c) => `<button class="sw ${c === pen.color ? 'on' : ''}" data-c="${c}" style="background:${c}" aria-label="Цвет"></button>`).join('')
+    + '<span class="sep"></span>' + [4, 10, 22].map((w) => `<button class="sz ${w === 6 ? 'on' : ''}" data-w="${w}" aria-label="Толщина"><i style="width:${Math.max(4, w / 1.6)}px;height:${Math.max(4, w / 1.6)}px"></i></button>`).join('')
+    + `<span class="sep"></span><button class="chip" id="drawClear">${IC.trash}Очистить</button>`;
+  pen.w = 4; $('tools').querySelector('[data-w="4"]').classList.add('on');
+  $('tools').querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => { pen.color = b.dataset.c; $('tools').querySelectorAll('[data-c]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  $('tools').querySelectorAll('[data-w]').forEach((b) => (b.onclick = () => { pen.w = +b.dataset.w; $('tools').querySelectorAll('[data-w]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  $('drawClear').onclick = () => { if (confirm('Очистить рисунок у всех?')) send({ t: 'drawclear', u: UID, n: NAME }); };
+  addEventListener('resize', fitCanvas);
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); cur = { sid: rid(), color: pen.color, w: pen.w, pts: [pt(e)], sent: 1 }; drawSeg(cur, 0); });
+  cv.addEventListener('pointermove', (e) => {
+    if (!cur) return;
+    const p = pt(e), l = cur.pts[cur.pts.length - 1];
+    if (Math.hypot(p[0] - l[0], p[1] - l[1]) < 3) return;
+    cur.pts.push(p); drawSeg(cur, cur.pts.length - 2);
+    if (Date.now() - sendT > 45) flushLive();
+  });
+  const up = () => { if (!cur) return; flushLive(); const s = cur; cur = null; strokes.push(s); send({ t: 'draw', sid: s.sid, color: s.color, w: s.w, pts: s.pts, u: UID }); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+}
+function flushLive() { sendT = Date.now(); if (cur.pts.length > cur.sent - 1) { send({ t: '~stroke', sid: cur.sid, color: cur.color, w: cur.w, pts: cur.pts.slice(Math.max(0, cur.sent - 1)) }); cur.sent = cur.pts.length; } }
+function pt(e) { const r = cv.getBoundingClientRect(), k = scale(); return [Math.round((e.clientX - r.left) / k.s - k.ox), Math.round((e.clientY - r.top) / k.s - k.oy)]; }
+// холст вписан в окно с сохранением пропорций
+function scale() { const r = cv.getBoundingClientRect(), s = Math.min(r.width / W, r.height / H); return { s, ox: (r.width / s - W) / 2, oy: (r.height / s - H) / 2 }; }
+function fitCanvas() {
+  const r = cv.getBoundingClientRect(); if (!r.width) return;
+  const dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  redraw();
+}
+function setup() { const k = scale(), dpr = cv.width / cv.getBoundingClientRect().width; g.setTransform(k.s * dpr, 0, 0, k.s * dpr, k.ox * k.s * dpr, k.oy * k.s * dpr); g.lineCap = g.lineJoin = 'round'; }
+function redraw() {
+  if (!cv.width) return;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  setup();
+  for (const s of strokes) drawSeg(s, 0, true);
+  for (const s of liveSt.values()) drawSeg(s, 0, true);
+}
+function drawSeg(s, from, all = false) {
+  if (!cv.width) return; setup();
+  g.strokeStyle = s.color; g.lineWidth = s.w; g.beginPath();
+  const pts = s.pts, start = all ? 0 : Math.max(0, from);
+  g.moveTo(pts[start][0], pts[start][1]);
+  if (pts.length === 1) g.lineTo(pts[0][0] + 0.1, pts[0][1]);
+  for (let i = start + 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.stroke();
+}
+function liveStroke(m) {
+  let s = liveSt.get(m.sid);
+  if (!s) { s = { sid: m.sid, color: m.color, w: m.w, pts: [] }; liveSt.set(m.sid, s); }
+  const from = Math.max(0, s.pts.length - 1); s.pts.push(...m.pts.slice(s.pts.length ? 1 : 0)); if (s.pts.length) drawSeg(s, from);
+  markTab('draw');
+}
+function onDraw(m) {
+  if (m.t === 'drawclear') { strokes.length = 0; liveSt.clear(); redraw(); if (m.u !== UID) toast(`${m.n} очистил(а) рисунок`); return; }
+  if (strokes.some((s) => s.sid === m.sid)) return; // свою линию уже нарисовали
+  const had = liveSt.has(m.sid); liveSt.delete(m.sid);
+  const s = { sid: m.sid, color: m.color, w: m.w, pts: m.pts }; strokes.push(s);
+  if (!had) drawSeg(s, 0, true);
+}
+
+// ---------- игры: крестики-нолики и морской бой ----------
+const KINDS = { ttt: 'Крестики-нолики', sea: 'Морской бой' };
+let gKind = 'ttt', openGid = null;
+const games = new Map(); // gid → {kind, a:{u,n}, b:{u,n}, accepted, moves:[], results:[], ts}
+function initGames() {
+  $('gameKinds').innerHTML = Object.entries(KINDS).map(([k, n]) => `<button class="chip ${k === gKind ? 'on' : ''}" data-k="${k}">${k === 'ttt' ? IC.grid : IC.ship}${n}</button>`).join('');
+  $('gameKinds').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { gKind = b.dataset.k; $('gameKinds').querySelectorAll('[data-k]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  paintWho(); paintGames();
+}
+function paintWho() {
+  if (!$('gameWho')) return;
+  const others = new Map(); for (const p of people.values()) if (p.u !== UID) others.set(p.u, p.n);
+  $('gameWho').innerHTML = others.size ? [...others].map(([u, n]) => `<button class="chip" data-u="${esc(u)}" data-n="${esc(n)}">${esc(n)}</button>`).join('') : '<span class="note" style="margin:0">Пока никого нет в сети</span>';
+  $('gameWho').querySelectorAll('[data-u]').forEach((b) => (b.onclick = () => {
+    const gid = rid();
+    if (send({ t: 'game', op: 'invite', gid, kind: gKind, a: { u: UID, n: NAME }, b: { u: b.dataset.u, n: b.dataset.n } })) toast(`Приглашение отправлено: ${b.dataset.n}`);
+  }));
+}
+function onGame(m, ts) {
+  let G = games.get(m.gid);
+  if (m.op === 'invite') {
+    G = { gid: m.gid, kind: m.kind, a: m.a, b: m.b, accepted: false, moves: [], results: [], ts };
+    games.set(m.gid, G);
+    if (m.b.u === UID) { markTab('games'); const el = sys(`${esc(m.a.n)} зовёт вас в «${KINDS[m.kind]}» — <button>принять</button>`, true); el.querySelector('button').onclick = () => acceptGame(m.gid); navigator.vibrate?.([60, 40, 60]); }
+    else if (m.a.u !== UID) sys(`${m.a.n} зовёт ${m.b.n} в «${KINDS[m.kind]}»`);
+  } else if (!G) return;
+  else if (m.op === 'accept') { G.accepted = true; if (G.a.u === UID) { toast(`${G.b.n} принял(а) игру!`); openGame(G.gid); } }
+  else if (m.op === 'move' || m.op === 'shot') G.moves.push(m);
+  else if (m.op === 'result') G.results.push(m);
+  else if (m.op === 'quit') G.quit = m.u;
+  if (G?.kind === 'sea' && m.op === 'shot' && myRole(G) && m.u !== UID) answerShot(G, m); // стреляли по мне — отвечаю
+  paintGames();
+  if (openGid === m.gid) paintBoard();
+}
+function acceptGame(gid) { send({ t: 'game', op: 'accept', gid, u: UID }); openGame(gid); }
+function myRole(G) { return G.a.u === UID ? 'a' : G.b.u === UID ? 'b' : null; }
+function paintGames() {
+  if (!$('gameList')) return;
+  const list = [...games.values()].sort((x, y) => y.ts - x.ts);
+  $('gameList').innerHTML = list.map((G) => {
+    const st = gameState(G), role = myRole(G);
+    const s = !G.accepted ? (G.b.u === UID ? 'Вас зовут играть' : 'Ждём ответа') : st.over ? st.text : role && st.turn === role ? 'Ваш ход' : 'Идёт игра';
+    return `<button class="g glass" data-g="${G.gid}" style="width:100%;text-align:left"><span class="gIc">${G.kind === 'ttt' ? IC.grid : IC.ship}</span>
+      <span class="mid"><b>${KINDS[G.kind]}</b><div class="s">${esc(G.a.n)} против ${esc(G.b.n)} · ${esc(s)}</div></span></button>`;
+  }).join('');
+  $('gameList').querySelectorAll('[data-g]').forEach((b) => (b.onclick = () => {
+    const G = games.get(b.dataset.g);
+    if (!G.accepted && G.b.u === UID) return acceptGame(G.gid);
+    openGame(G.gid);
+  }));
+}
+function openGame(gid) { openGid = gid; $('board').classList.remove('hidden'); paintBoard(); }
+function closeGame() { openGid = null; $('board').classList.add('hidden'); }
+function gameState(G) { return G.kind === 'ttt' ? tttState(G) : seaState(G); }
+function paintBoard() {
+  const G = games.get(openGid); if (!G) return closeGame();
+  const st = gameState(G);
+  let html = `<h2>${KINDS[G.kind]}</h2><div class="boardLbl">${esc(G.a.n)} против ${esc(G.b.n)}</div><div class="st" id="gst">${esc(st.text)}</div>`;
+  html += G.kind === 'ttt' ? tttHtml(G, st) : seaHtml(G, st);
+  html += `<div class="row" style="width:min(86vw,330px)">${st.over && myRole(G) ? '<button class="btn" id="gAgain" style="margin-top:0">Ещё раз</button>' : ''}<button class="btn ghost" id="gClose" style="margin-top:0">Закрыть</button></div>`;
+  $('board').innerHTML = html;
+  $('gClose').onclick = closeGame;
+  if ($('gAgain')) $('gAgain').onclick = () => { const other = myRole(G) === 'a' ? G.b : G.a; const gid = rid(); send({ t: 'game', op: 'invite', gid, kind: G.kind, a: { u: UID, n: NAME }, b: other }); closeGame(); toast('Приглашение отправлено'); };
+  if (G.kind === 'ttt') $('board').querySelectorAll('[data-cell]').forEach((b) => (b.onclick = () => tttMove(G, +b.dataset.cell, st)));
+  else $('board').querySelectorAll('[data-shot]').forEach((b) => (b.onclick = () => seaShot(G, +b.dataset.shot, st)));
+}
+// крестики-нолики: позвавший играет крестиками и ходит первым
+const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+function tttState(G) {
+  const cells = Array(9).fill(null); let turn = 'a', win = null;
+  for (const mv of G.moves) { if (win || cells[mv.cell] || mv.u !== G[turn].u) continue; cells[mv.cell] = turn; turn = turn === 'a' ? 'b' : 'a'; win = LINES.find((l) => l.every((i) => cells[i] && cells[i] === cells[l[0]])) || null; }
+  const full = cells.every(Boolean), over = !!win || full || !!G.quit;
+  const role = myRole(G);
+  const text = !G.accepted ? 'Ждём, пока соперник примет игру' : win ? (cells[win[0]] === role ? 'Вы победили!' : `Победа: ${G[cells[win[0]]].n}`) : full ? 'Ничья' : role === turn ? 'Ваш ход' : `Ходит ${G[turn].n}`;
+  return { cells, turn, win, over, text };
+}
+function tttHtml(G, st) {
+  return `<div class="ttt">${st.cells.map((c, i) => `<button data-cell="${i}" class="${c === 'a' ? 'x' : c === 'b' ? 'o' : ''} ${st.win?.includes(i) ? 'win' : ''}">${c === 'a' ? IC.x : c === 'b' ? IC.o : ''}</button>`).join('')}</div>`;
+}
+function tttMove(G, cell, st) {
+  if (!G.accepted || st.over || st.cells[cell] || myRole(G) !== st.turn) return;
+  send({ t: 'game', op: 'move', gid: G.gid, cell, u: UID });
+}
+// морской бой 8×8: корабли 3, 2, 2, 1, 1, 1 расставляются сами; стреляем по очереди, попал — ходи ещё
+const SHIPS = [3, 2, 2, 1, 1, 1], N = 8;
+function fleet(G) {
+  const key = `kl-sea-${G.gid}-${UID}`; let f = null; try { f = JSON.parse(store.get(key) || 'null'); } catch {}
+  if (f) return f;
+  for (let tries = 0; tries < 500 && !f; tries++) {
+    const occ = new Set(), ships = []; let ok = true;
+    for (const len of SHIPS) {
+      let placed = false;
+      for (let k = 0; k < 200 && !placed; k++) {
+        const hor = Math.random() < 0.5, x = Math.floor(Math.random() * (hor ? N - len + 1 : N)), y = Math.floor(Math.random() * (hor ? N : N - len + 1));
+        const cells = Array.from({ length: len }, (_, i) => (y + (hor ? 0 : i)) * N + x + (hor ? i : 0));
+        // корабли не касаются друг друга даже углами
+        const near = cells.some((c) => { const cx = c % N, cy = Math.floor(c / N); for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) { const nx = cx + dx, ny = cy + dy; if (nx >= 0 && ny >= 0 && nx < N && ny < N && occ.has(ny * N + nx)) return true; } return false; });
+        if (!near) { cells.forEach((c) => occ.add(c)); ships.push(cells); placed = true; }
+      }
+      if (!placed) { ok = false; break; }
+    }
+    if (ok) f = ships;
+  }
+  store.set(key, JSON.stringify(f)); return f;
+}
+function seaState(G) {
+  // чей ход: начинает позвавший; промах — ход переходит
+  let turn = 'a', winner = null; const shots = { a: new Map(), b: new Map() }; // по полю соперника: клетка → результат
+  const done = new Set();
+  for (const r of G.results) {
+    if (winner) break;
+    if (done.has(r.by + ':' + r.cell)) continue; done.add(r.by + ':' + r.cell); // повтор ответа не считаем
+    const side = r.by === G.a.u ? 'a' : 'b';
+    shots[side].set(r.cell, r.res); if (r.sunk) r.sunk.forEach((c) => shots[side].set(c, 'sunk'));
+    if (r.win) winner = side;
+    if (r.res === 'miss') turn = side === 'a' ? 'b' : 'a';
+  }
+  const answered = new Set(G.results.map((r) => r.by + ':' + r.cell));
+  const waiting = G.moves.some((mv) => mv.op === 'shot' && !answered.has(mv.u + ':' + mv.cell));
+  const role = myRole(G), over = !!winner || !!G.quit;
+  const text = !G.accepted ? 'Ждём, пока соперник примет игру' : winner ? (winner === role ? 'Вы победили! Флот соперника потоплен' : `Победа: ${G[winner].n}`)
+    : waiting ? 'Выстрел… ждём ответа' : role === turn ? 'Ваш выстрел — нажмите на клетку поля соперника' : `Стреляет ${G[turn].n}`;
+  return { turn, winner, shots, over, waiting, text };
+}
+function seaHtml(G, st) {
+  const role = myRole(G), foe = role === 'a' ? 'b' : 'a';
+  const viewSide = role || 'a';
+  const target = st.shots[viewSide];
+  let html = `<div class="boardLbl">${role ? 'Поле соперника' : 'Поле ' + esc(G.b.n)}</div><div class="sea">`;
+  for (let i = 0; i < N * N; i++) { const r = target.get(i); html += `<button data-shot="${i}" class="${r || ''}"></button>`; }
+  html += '</div>';
+  if (role) {
+    const f = fleet(G), mineCells = new Set(f.flat()), hits = st.shots[foe];
+    html += `<div class="boardLbl">Ваш флот</div><div class="sea mine">`;
+    for (let i = 0; i < N * N; i++) { const r = hits.get(i); html += `<button disabled class="${mineCells.has(i) ? 'ship' : ''} ${r || ''}"></button>`; }
+    html += '</div>';
+  }
+  return html;
+}
+function seaShot(G, cell, st) {
+  const role = myRole(G);
+  if (!G.accepted || st.over || st.waiting || role !== st.turn || st.shots[role].has(cell)) return;
+  send({ t: 'game', op: 'shot', gid: G.gid, cell, u: UID });
+}
+// по мне выстрелили — отвечаем, попал ли (мой флот знает только мой телефон)
+function answerShot(G, m) {
+  if (G.results.some((r) => r.by === m.u && r.cell === m.cell)) return;
+  const f = fleet(G), hitShip = f.find((s) => s.includes(m.cell));
+  const prior = new Set(G.results.filter((r) => r.by === m.u).map((r) => r.cell)); prior.add(m.cell);
+  let res = 'miss', sunk = null, win = false;
+  if (hitShip) {
+    res = 'hit';
+    if (hitShip.every((c) => prior.has(c))) { res = 'sunk'; sunk = hitShip; }
+    win = f.flat().every((c) => prior.has(c));
+  }
+  // при переподключении сервер присылает всю историю: ответ мог уже быть — проверяем ещё раз перед отправкой
+  setTimeout(() => { if (!G.results.some((r) => r.by === m.u && r.cell === m.cell)) send({ t: 'game', op: 'result', gid: G.gid, cell: m.cell, by: m.u, res, sunk, win, u: UID }); }, 700);
+}
+// вход сразу, если имя пришло в ссылке (из приложения) — в самом конце, когда весь код уже загружен
+if (NAME && hashArg('name')) join();
+</script>
+</body>
+</html>
