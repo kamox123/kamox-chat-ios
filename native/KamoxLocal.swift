@@ -444,7 +444,17 @@ enum KamoxFinder {
 public class LocalChatPlugin: CAPPlugin, CAPBridgedPlugin, WKScriptMessageHandler {
     public let identifier = "LocalChatPlugin"
     public let jsName = "LocalChat"
-    public let pluginMethods: [CAPPluginMethod] = []
+    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "cmd", returnType: CAPPluginReturnPromise)]
+
+    override public func load() {
+        // запасной путь — messageHandlers (если его ещё не вписал KamoxViewController)
+        let add = { [weak self] in
+            guard let self = self, let ucc = self.bridge?.webView?.configuration.userContentController else { return }
+            ucc.removeScriptMessageHandler(forName: "kamoxLocal")
+            ucc.add(KamoxWeakHandler(self), name: "kamoxLocal")
+        }
+        if Thread.isMainThread { add() } else { DispatchQueue.main.async(execute: add) }
+    }
 
     /// страница, которая последней обращалась к модулю, — ей и отвечаем
     weak var lastWebView: WKWebView?
@@ -468,32 +478,43 @@ public class LocalChatPlugin: CAPPlugin, CAPBridgedPlugin, WKScriptMessageHandle
         // управлять сервером можно только со своих страниц, не со страниц чужих телефонов
         let o = message.frameInfo.securityOrigin
         let trusted = (o.protocol == "capacitor" && o.host == "localhost") || o.host == "kamox123.github.io"
-        if !trusted && cmd != "status" { reply(id, "{\"error\":\"нет доступа\"}"); return }
+        run(cmd, arg, trusted: trusted) { self.reply(id, $0) }
+    }
+
+    /// Основной путь: window.Capacitor.Plugins.LocalChat.cmd({cmd, arg}) → {json}. Capacitor пускает только свои страницы.
+    @objc func cmd(_ call: CAPPluginCall) {
+        let c = call.getString("cmd") ?? "", a = call.getString("arg") ?? ""
+        // Capacitor зовёт модуль не из главного потока, а экран и сеть настраиваем из главного
+        DispatchQueue.main.async { self.run(c, a, trusted: true) { call.resolve(["json": $0]) } }
+    }
+
+    func run(_ cmd: String, _ arg: String, trusted: Bool, _ done: @escaping (String) -> Void) {
+        if !trusted && cmd != "status" { done("{\"error\":\"нет доступа\"}"); return }
         switch cmd {
         case "start":
             do {
                 let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
                 _ = try KamoxChatServer.start(assets: LocalChatPlugin.assets, dir: dir)
                 UIApplication.shared.isIdleTimerDisabled = true // экран не гаснет, пока чат работает
-                reply(id, info())
-            } catch { reply(id, "{\"error\":\(KamoxJS.quote("Не удалось запустить чат: " + error.localizedDescription))}") }
+                done(info())
+            } catch { done("{\"error\":\(KamoxJS.quote("Не удалось запустить чат: " + error.localizedDescription))}") }
         case "stop":
             KamoxChatServer.stopAll()
             UIApplication.shared.isIdleTimerDisabled = false
-            reply(id, "{}")
+            done("{}")
         case "status":
-            reply(id, info())
+            done(info())
         case "find":
-            KamoxFinder.find { url in self.reply(id, "{\"url\":\(KamoxJS.quote(url ?? ""))}") }
+            KamoxFinder.find { url in done("{\"url\":\(KamoxJS.quote(url ?? ""))}") }
         case "proxy":
             let hp = arg.split(separator: ":")
-            guard hp.count >= 1, arg.range(of: "^[0-9.]{7,15}(:[0-9]{2,5})?$", options: .regularExpression) != nil else { reply(id, "{\"error\":\"нет доступа\"}"); return }
+            guard hp.count >= 1, arg.range(of: "^[0-9.]{7,15}(:[0-9]{2,5})?$", options: .regularExpression) != nil else { done("{\"error\":\"нет доступа\"}"); return }
             do {
                 let port = try KamoxProxy.start(assets: LocalChatPlugin.assets, host: String(hp[0]), port: UInt16(hp.count > 1 ? String(hp[1]) : "8080") ?? 8080)
-                reply(id, "{\"port\":\(port)}")
-            } catch { reply(id, "{\"error\":\(KamoxJS.quote(error.localizedDescription))}") }
+                done("{\"port\":\(port)}")
+            } catch { done("{\"error\":\(KamoxJS.quote(error.localizedDescription))}") }
         default:
-            reply(id, "{\"error\":\"unknown\"}")
+            done("{\"error\":\"unknown\"}")
         }
     }
 
@@ -537,6 +558,7 @@ class KamoxViewController: CAPBridgeViewController {
         return c
     }
     override open func capacitorDidLoad() {
-        bridge?.registerPluginInstance(kamoxPlugin)
+        // модуль мог уже подключиться сам (packageClassList) — тогда второй раз не регистрируем
+        if bridge?.plugin(withName: "LocalChat") == nil { bridge?.registerPluginInstance(kamoxPlugin) }
     }
 }

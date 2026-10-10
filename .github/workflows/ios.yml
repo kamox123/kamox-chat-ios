@@ -46,6 +46,10 @@ jobs:
           sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="KamoxViewController" customModule="App" customModuleProvider="target"/' "$S"
           grep -c KamoxViewController "$S"
           grep -c "class KamoxChatServer" "$A"
+          # модуль подключает сам Capacitor по списку packageClassList — не зависим от Main.storyboard
+          node -e "const f='ios/App/App/capacitor.config.json',fs=require('fs');const j=JSON.parse(fs.readFileSync(f,'utf8'));j.packageClassList=[...new Set([...(j.packageClassList||[]),'LocalChatPlugin'])];fs.writeFileSync(f,JSON.stringify(j,null,2))"
+          cat ios/App/App/capacitor.config.json
+          grep -n "customClass" "$S"
       - name: Сборка
         run: |
           cd ios/App

@@ -2392,12 +2392,21 @@ let KA = window.KamoxLocal, KI = window.webkit?.messageHandlers?.kamoxLocal;
 const waits = {}; window.__kcReply = (id, r) => { waits[id]?.(r); delete waits[id]; };
 const ios = (cmd, arg = '') => new Promise((res) => { const id = Math.random().toString(36).slice(2); waits[id] = res; KI.postMessage({ cmd, arg, id }); });
 const ok = (r) => { if (r.error) throw new Error(r.error); return r; };
+// iPhone: основной путь — модуль Capacitor «LocalChat» (метод cmd), запасной — messageHandlers
+const capLC = () => { const C = window.Capacitor; try { return C?.isPluginAvailable?.('LocalChat') && C.Plugins?.LocalChat?.cmd ? C.Plugins.LocalChat : null; } catch { return null; } };
+const capCall = async (cmd, arg = '') => JSON.parse((await capLC().cmd({ cmd, arg })).json || '{}');
 const makeLC = () => KA ? {
   start: async () => ok(JSON.parse(KA.start())),
   stop: async () => KA.stop(),
   status: async () => JSON.parse(KA.status()),
   find: () => new Promise((res, rej) => { window.kcFound = (u) => (u ? res({ url: u }) : rej(new Error('not found'))); KA.find(); }),
   proxy: async (h) => JSON.parse(KA.proxy(h)),
+} : capLC() ? {
+  start: async () => ok(await capCall('start')),
+  stop: () => capCall('stop'),
+  status: () => capCall('status'),
+  find: async () => { const r = await capCall('find'); if (!r.url) throw new Error('not found'); return r; },
+  proxy: (h) => capCall('proxy', h),
 } : KI ? {
   start: async () => ok(await ios('start')),
   stop: () => ios('stop'),
@@ -2412,7 +2421,11 @@ const MAIN = 'https://kamox123.github.io/portfolio-demo/chat/';
 if (!navigator.onLine) $('sub').textContent = 'Интернета нет — но с друзьями рядом можно общаться через Wi-Fi или точку доступа';
 if (!LC) { $('hostCard').classList.add('hidden'); $('findBtn').classList.add('hidden'); }
 // приложение может подключить свою часть чуть позже страницы — проверяем ещё несколько раз
-function diag() { const d = $('diag'); if (d) d.textContent = 'Klik · ' + (KA ? 'Android' : KI ? 'iPhone' : window.__kcNative ? 'приложение без модуля' : 'браузер') + (LC ? ' · сервер доступен' : ' · сервер недоступен'); }
+function diag() {
+  const d = $('diag'); if (!d) return; const C = window.Capacitor;
+  d.textContent = 'Klik · ' + (KA ? 'Android' : capLC() ? 'iPhone (модуль)' : KI ? 'iPhone' : window.__kcNative ? 'приложение без модуля' : 'браузер') + (LC ? ' · сервер доступен' : ' · сервер недоступен')
+    + ' · ' + (C ? 'C:' + (C.getPlatform?.() || '?') + ' ' + Object.keys(C.Plugins || {}).join(',') : 'C:нет') + ' · ' + location.protocol.replace(':', '');
+}
 [200, 600, 1500, 3000, 6000].forEach((ms) => setTimeout(() => {
   if (LC) return;
   KA = window.KamoxLocal; KI = window.webkit?.messageHandlers?.kamoxLocal; LC = makeLC();
